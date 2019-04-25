@@ -1,6 +1,7 @@
 import sys
 import json
 
+from sentry_sdk.consts import DEFAULT_OPTIONS
 from sentry_sdk.utils import (
     AnnotatedValue,
     convert_types,
@@ -33,7 +34,7 @@ def test_strip_exception_vars():
         event, _ = event_from_exception(sys.exc_info())
 
     assert len(json.dumps(event)) > 10000
-    strip_event_mut(event)
+    strip_event_mut(event, DEFAULT_OPTIONS)
     event = flatten_metadata(event)
     event = convert_types(event)
     assert len(json.dumps(event)) < 10000

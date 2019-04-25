@@ -924,7 +924,8 @@ def format_and_strip(template, params, strip_string=strip_string):
             raise ValueError("Not enough params.")
         param = params.pop()
 
-        stripped_param = strip_string(param, client_options["max_string_length"])
+        # stripped_param = strip_string(param, client_options["max_string_length"])
+        stripped_param = strip_string(param)
         if isinstance(stripped_param, AnnotatedValue):
             rv_remarks.extend(
                 realign_remark(remark) for remark in stripped_param.metadata["rem"]
