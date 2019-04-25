@@ -743,48 +743,63 @@ def flatten_metadata(obj):
     return obj
 
 
-def strip_event_mut(event):
+def strip_event_mut(event, client_options):
     # type: (Dict[str, Any]) -> None
-    strip_stacktrace_mut(event.get("stacktrace", None))
+    strip_stacktrace_mut(event.get("stacktrace", None), client_options)
     exception = event.get("exception", None)
     if exception:
         for exception in exception.get("values", None) or ():
-            strip_stacktrace_mut(exception.get("stacktrace", None))
+            strip_stacktrace_mut(exception.get("stacktrace", None), client_options)
 
-    strip_request_mut(event.get("request", None))
-    strip_breadcrumbs_mut(event.get("breadcrumbs", None))
+    strip_request_mut(event.get("request", None), client_options)
+    strip_breadcrumbs_mut(event.get("breadcrumbs", None), client_options)
 
 
-def strip_stacktrace_mut(stacktrace):
+def strip_stacktrace_mut(stacktrace, client_options):
     # type: (Optional[Dict[str, List[Dict[str, Any]]]]) -> None
     if not stacktrace:
         return
     for frame in stacktrace.get("frames", None) or ():
-        strip_frame_mut(frame)
+        strip_frame_mut(frame, client_options)
 
 
-def strip_request_mut(request):
+def strip_request_mut(request, client_options):
     # type: (Dict[str, Any]) -> None
     if not request:
         return
     data = request.get("data", None)
     if not data:
         return
-    request["data"] = strip_databag(data)
+    request["data"] = strip_databag(
+        data,
+        client_options.max_breadth,
+        client_options.max_depth,
+        client_options.max_string_length,
+    )
 
 
-def strip_breadcrumbs_mut(breadcrumbs):
+def strip_breadcrumbs_mut(breadcrumbs, client_options):
     if not breadcrumbs:
         return
 
     for i in range(len(breadcrumbs)):
-        breadcrumbs[i] = strip_databag(breadcrumbs[i])
+        breadcrumbs[i] = strip_databag(
+            breadcrumbs[i],
+            client_options.max_breadth,
+            client_options.max_depth,
+            client_options.max_string_length,
+        )
 
 
-def strip_frame_mut(frame):
+def strip_frame_mut(frame, client_options):
     # type: (Dict[str, Any]) -> None
     if "vars" in frame:
-        frame["vars"] = strip_databag(frame["vars"])
+        frame["vars"] = strip_databag(
+            frame["vars"],
+            client_options.max_breadth,
+            client_options.max_depth,
+            client_options.max_string_length,
+        )
 
 
 class Memo(object):
@@ -824,20 +839,23 @@ def convert_types(obj):
     return obj
 
 
-def strip_databag(obj, remaining_depth=20, max_breadth=20):
+def strip_databag(obj, remaining_depth=20, max_breadth=20, max_string_length=512):
     # type: (Any, int, int) -> Any
     assert not isinstance(obj, bytes), "bytes should have been normalized before"
     if remaining_depth <= 0:
         return AnnotatedValue(None, {"rem": [["!limit", "x"]]})
     if isinstance(obj, text_type):
-        return strip_string(obj)
+        return strip_string(obj, max_string_length)
     if isinstance(obj, Mapping):
         rv_dict = {}  # type: Dict[Any, Any]
         for i, (k, v) in enumerate(obj.items()):
             if i >= max_breadth:
                 return AnnotatedValue(rv_dict, {"len": max_breadth})
             rv_dict[k] = strip_databag(
-                v, remaining_depth=remaining_depth - 1, max_breadth=max_breadth
+                v,
+                remaining_depth=remaining_depth - 1,
+                max_breadth=max_breadth,
+                max_string_length=max_string_length,
             )
 
         return rv_dict
@@ -848,7 +866,10 @@ def strip_databag(obj, remaining_depth=20, max_breadth=20):
                 return AnnotatedValue(rv_list, {"len": max_breadth})
             rv_list.append(
                 strip_databag(
-                    v, remaining_depth=remaining_depth - 1, max_breadth=max_breadth
+                    v,
+                    remaining_depth=remaining_depth - 1,
+                    max_breadth=max_breadth,
+                    max_string_length=max_string_length,
                 )
             )
 
@@ -858,7 +879,6 @@ def strip_databag(obj, remaining_depth=20, max_breadth=20):
 
 def strip_string(value, max_length=512):
     # type: (str, int) -> Union[AnnotatedValue, str]
-    # TODO: read max_length from config
     if not value:
         return value
     length = len(value)
@@ -904,7 +924,7 @@ def format_and_strip(template, params, strip_string=strip_string):
             raise ValueError("Not enough params.")
         param = params.pop()
 
-        stripped_param = strip_string(param)
+        stripped_param = strip_string(param, client_options.max_string_length)
         if isinstance(stripped_param, AnnotatedValue):
             rv_remarks.extend(
                 realign_remark(remark) for remark in stripped_param.metadata["rem"]
