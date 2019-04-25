@@ -6,6 +6,7 @@ import logging
 from contextlib import contextmanager
 from datetime import datetime
 
+from sentry_sdk.consts import DEFAULT_OPTIONS
 from sentry_sdk._compat import (
     urlparse,
     text_type,
@@ -915,7 +916,13 @@ def format_and_strip(template, params, strip_string=strip_string):
             (rv_length + x if isinstance(x, int_types) and i < 4 else x)
             for i, x in enumerate(remark)
         ]
-
+    
+    from sentry_sdk.hub import Hub
+    hub = Hub.current
+    if hub.client is not None:
+        max_string_length = hub.client.options
+    else:
+        max_string_length = DEFAULT_OPTIONS['max_string_length']
     for chunk in chunks[:-1]:
         rv.append(chunk)
         rv_length += len(chunk)
@@ -924,8 +931,7 @@ def format_and_strip(template, params, strip_string=strip_string):
             raise ValueError("Not enough params.")
         param = params.pop()
 
-        # stripped_param = strip_string(param, client_options["max_string_length"])
-        stripped_param = strip_string(param)
+        stripped_param = strip_string(param, max_string_length)
         if isinstance(stripped_param, AnnotatedValue):
             rv_remarks.extend(
                 realign_remark(remark) for remark in stripped_param.metadata["rem"]
