@@ -57,15 +57,6 @@ def get_options(*args, **kwargs):
     if rv["environment"] is None:
         rv["environment"] = os.environ.get("SENTRY_ENVIRONMENT")
 
-    if 'max_breadth' not in rv:
-        rv['max_breadth'] = DEFAULT_OPTIONS['max_breadth']
-
-    if 'max_depth' not in rv:
-        rv['max_depth'] = DEFAULT_OPTIONS['max_depth']
-
-    if 'max_string_length' not in rv:
-        rv['max_string_length'] = DEFAULT_OPTIONS['max_string_length']
-
     return rv  # type: ignore
 
 

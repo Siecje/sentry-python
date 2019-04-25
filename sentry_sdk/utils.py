@@ -772,9 +772,9 @@ def strip_request_mut(request, client_options):
         return
     request["data"] = strip_databag(
         data,
-        client_options.max_breadth,
-        client_options.max_depth,
-        client_options.max_string_length,
+        client_options["max_breadth"],
+        client_options["max_depth"],
+        client_options["max_string_length"],
     )
 
 
@@ -785,9 +785,9 @@ def strip_breadcrumbs_mut(breadcrumbs, client_options):
     for i in range(len(breadcrumbs)):
         breadcrumbs[i] = strip_databag(
             breadcrumbs[i],
-            client_options.max_breadth,
-            client_options.max_depth,
-            client_options.max_string_length,
+            client_options["max_breadth"],
+            client_options["max_depth"],
+            client_options["max_string_length"],
         )
 
 
@@ -796,9 +796,9 @@ def strip_frame_mut(frame, client_options):
     if "vars" in frame:
         frame["vars"] = strip_databag(
             frame["vars"],
-            client_options.max_breadth,
-            client_options.max_depth,
-            client_options.max_string_length,
+            client_options["max_breadth"],
+            client_options["max_depth"],
+            client_options["max_string_length"],
         )
 
 
@@ -924,7 +924,7 @@ def format_and_strip(template, params, strip_string=strip_string):
             raise ValueError("Not enough params.")
         param = params.pop()
 
-        stripped_param = strip_string(param, client_options.max_string_length)
+        stripped_param = strip_string(param, client_options["max_string_length"])
         if isinstance(stripped_param, AnnotatedValue):
             rv_remarks.extend(
                 realign_remark(remark) for remark in stripped_param.metadata["rem"]
